@@ -1,6 +1,6 @@
 const DateTime = Jymfony.Component.DateTime.DateTime;
 const DateTimeZone = Jymfony.Component.DateTime.DateTimeZone;
-const TimeSpan = Jymfony.Component.DateTime.TimeSpan;
+const TimeSpan = Jymfony.Component.DateTime.TimeSpanInterface;
 
 const { expect } = require('chai');
 

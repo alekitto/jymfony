@@ -82,7 +82,7 @@ class CacheItemInterface {
     /**
      * Sets the expiration time for this cache item.
      *
-     * @param {int|Jymfony.Component.DateTime.TimeSpan|undefined} time
+     * @param {int|Jymfony.Component.DateTime.TimeSpanInterface|undefined} time
      *   The period of time from the present after which the item MUST be considered
      *   expired. An integer parameter is understood to be the time in seconds until
      *   expiration. If null is passed explicitly, a default value MAY be used.

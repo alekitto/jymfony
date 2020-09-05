@@ -1,7 +1,7 @@
 const ConstraintInterface = Jymfony.Component.Crontab.Constraints.ConstraintInterface;
 const Month = Jymfony.Component.Crontab.Constraints.Month;
 const PeriodInterface = Jymfony.Component.Crontab.Constraints.PeriodInterface;
-const TimeSpan = Jymfony.Component.DateTime.TimeSpan;
+const TimeSpan = Jymfony.Component.DateTime.TimeSpanInterface;
 
 const DAYS_IN_MONTH = [ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ];
 const SEC = new TimeSpan('PT1S');

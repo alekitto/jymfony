@@ -1,7 +1,7 @@
 import { NEVER, nextInvalidVal, nextVal } from '../util';
 
 const Constraints = Jymfony.Component.Crontab.Constraints;
-const TimeSpan = Jymfony.Component.DateTime.TimeSpan;
+const TimeSpan = Jymfony.Component.DateTime.TimeSpanInterface;
 const SECOND = new TimeSpan('PT1S');
 
 /**

@@ -2,7 +2,7 @@ const InvalidArgumentException = Jymfony.Component.Cache.Exception.InvalidArgume
 const PruneableInterface = Jymfony.Component.Cache.PruneableInterface;
 const NotUnserializable = Jymfony.Component.Cache.Fixtures.NotUnserializable;
 const DateTime = Jymfony.Component.DateTime.DateTime;
-const TimeSpan = Jymfony.Component.DateTime.TimeSpan;
+const TimeSpan = Jymfony.Component.DateTime.TimeSpanInterface;
 const { expect } = require('chai');
 
 /**

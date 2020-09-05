@@ -1,6 +1,6 @@
 const ConstraintInterface = Jymfony.Component.Crontab.Constraints.ConstraintInterface;
 const PeriodInterface = Jymfony.Component.Crontab.Constraints.PeriodInterface;
-const TimeSpan = Jymfony.Component.DateTime.TimeSpan;
+const TimeSpan = Jymfony.Component.DateTime.TimeSpanInterface;
 
 const PREV_SEC = new TimeSpan('P-T1S');
 const NEXT_MONTH = new TimeSpan('P1M');

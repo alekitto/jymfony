@@ -516,7 +516,7 @@ export default class TimeDescriptor {
     /**
      * Adds a timespan.
      *
-     * @param {Jymfony.Component.DateTime.TimeSpan} timespan
+     * @param {Jymfony.Component.DateTime.TimeSpanInterface} timespan
      */
     add(timespan) {
         this._addMilliseconds((timespan.inverse ? -1 : 1) * timespan.milliseconds);

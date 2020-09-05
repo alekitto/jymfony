@@ -1,7 +1,7 @@
 const CacheItemInterface = Jymfony.Component.Cache.CacheItemInterface;
 const InvalidArgumentException = Jymfony.Component.Cache.Exception.InvalidArgumentException;
 const DateTime = Jymfony.Component.DateTime.DateTime;
-const TimeSpan = Jymfony.Component.DateTime.TimeSpan;
+const TimeSpan = Jymfony.Component.DateTime.TimeSpanInterface;
 
 /**
  * @memberOf Jymfony.Component.Cache
