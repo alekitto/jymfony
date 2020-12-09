@@ -39,6 +39,16 @@ Jymfony.Contracts = {
     /**
      * @namespace
      */
+    HttpClient: {
+        /**
+         * @namespace
+         */
+        Exception: {},
+    },
+
+    /**
+     * @namespace
+     */
     HttpFoundation: {},
 
     /**

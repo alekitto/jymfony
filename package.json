@@ -61,6 +61,7 @@
         "Jymfony.Component.Dotenv": "src/Component/Dotenv/src",
         "Jymfony.Component.EventDispatcher": "src/Component/EventDispatcher/src",
         "Jymfony.Component.Filesystem": "src/Component/Filesystem/src",
+        "Jymfony.Component.HttpClient": "src/Component/HttpClient/src",
         "Jymfony.Component.HttpFoundation": "src/Component/HttpFoundation/src",
         "Jymfony.Component.HttpServer": "src/Component/HttpServer/src",
         "Jymfony.Component.Kernel": "src/Component/Kernel/src",
