@@ -62,6 +62,7 @@ Object.defineProperty(HttpClientInterface, 'OPTIONS_DEFAULTS', {
         verify_peer: true,      // boolean - require verification of SSL certificate used.
         verify_host: true,      // boolean - check the existence of a common name and also verify that it matches the hostname provided
         resolvers: null,        // string[] - DNS resolver servers. Use system default if null or not passed.
+        capture_peer_cert_chain: false,
         ca_file: null,
         local_cert: null,
         local_pk: null,

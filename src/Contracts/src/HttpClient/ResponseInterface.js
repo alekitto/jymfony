@@ -28,7 +28,7 @@ class ResponseInterface {
     getHeaders(Throw = true) { }
 
     /**
-     * Gets the response body as a string.
+     * Gets the response body as a buffer.
      *
      * @param {boolean} [Throw = true] Whether an exception should be thrown on 3/4/5xx status codes
      *
@@ -83,7 +83,7 @@ class ResponseInterface {
      *  - user_data (mixed|null) - the value of the "user_data" request option, null if not set
      *
      * When the "capture_peer_cert_chain" option is true, the "peer_certificate_chain"
-     * attribute SHOULD list the peer certificates as an array of OpenSSL X.509 resources.
+     * attribute SHOULD list the peer certificates as an array of certificate objects.
      *
      * @return {*} An object of all available info, or one of them when type is
      *             provided, or null when an unsupported type is requested
