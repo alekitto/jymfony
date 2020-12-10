@@ -1,22 +1,17 @@
 import { constants as HTTP2_CONSTANTS, connect as http2Connect } from 'http2';
-import { PassThrough } from 'stream';
 import { Socket } from 'net';
 import { promises as fsPromises } from 'fs';
 import { request as http1Request } from 'http';
 import { performance } from 'perf_hooks';
 import { pipeline } from 'stream';
 import { connect as tlsConnect } from 'tls';
-import zlib from 'zlib';
 
 const CommonResponseTrait = Jymfony.Component.HttpClient.CommonResponseTrait;
+const DecodingStream = Jymfony.Component.HttpClient.DecodingStream;
 const ResponseInterface = Jymfony.Contracts.HttpClient.ResponseInterface;
 const TransportException = Jymfony.Contracts.HttpClient.Exception.TransportException;
 
 const { readFile } = fsPromises;
-
-const ENCODING_BROTLI = 'br';
-const ENCODING_GZIP = 'gzip';
-const ENCODING_DEFLATE = 'deflate';
 
 /**
  * @memberOf Jymfony.Component.HttpClient
@@ -91,11 +86,18 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
         this._headers = {};
 
         /**
-         * @type {ReadableStream}
+         * @type {NodeJS.ReadStream}
          *
          * @private
          */
         this._message = undefined;
+
+        /**
+         * @type {NodeJS.ReadStream}
+         *
+         * @private
+         */
+        this._readable = undefined;
 
         /**
          * @type {null|Buffer}
@@ -180,7 +182,22 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
             this._checkStatusCode();
         }
 
-        return this._buffer;
+        if (this._buffer) {
+            return this._buffer;
+        }
+
+        const stream = new __jymfony.StreamBuffer();
+        await new Promise((resolve, reject) => {
+            pipeline(this._readable, stream, err => {
+                if (err) {
+                    reject(err);
+                }
+
+                resolve();
+            });
+        });
+
+        return this._buffer = stream.buffer;
     }
 
     close() {
@@ -197,38 +214,16 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
             return;
         }
 
-        let contentStream;
         const contentEncoding = this._headers['content-encoding'] ? this._headers['content-encoding'][0] : undefined;
-
-        switch (contentEncoding) {
-            case ENCODING_DEFLATE:
-                contentStream = zlib.createInflate();
-                break;
-
-            case ENCODING_GZIP:
-                contentStream = zlib.createGunzip();
-                break;
-
-            case ENCODING_BROTLI:
-                contentStream = zlib.createBrotliDecompress();
-                break;
-
-            default:
-                contentStream = new PassThrough();
-        }
-
-        const stream = new __jymfony.StreamBuffer();
-        await new Promise((resolve, reject) => {
-            pipeline(this._message, contentStream, stream, err => {
-                if (err) {
-                    reject(err);
-                }
-
-                resolve();
-            });
+        const decodingStream = new DecodingStream(contentEncoding || DecodingStream.ENCODING_NONE, {
+            onProgress: this._onProgress ? (current => {
+                this._remaining = 0 < this._info.size_download ? this._info.size_download - current : this._remaining;
+                this._onProgress(current, this._info.size_download, this._info);
+            }) : undefined,
         });
 
-        this._buffer = stream.buffer;
+        this._info.total_time = this._info.starttransfer_time = performance.now() - this._info.start_time;
+        this._readable = this._message.pipe(decodingStream);
     }
 
     async _open() {
@@ -255,6 +250,7 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
 
                 this._info.request_header = __jymfony.sprintf('> %s %s HTTP/%s\r\n', context.http.method, this._info.request_header, context.http.protocol_version);
                 this._info.request_header += context.http.headers.join('\r\n') + '\r\n\r\n';
+                this._info.debug += this._info.request_header;
 
                 const socket = new Socket();
                 let stream = socket;
@@ -290,6 +286,7 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
                     continue;
                 }
 
+                this._info.connect_time = performance.now() - this._info.start_time;
                 if ('https:' === url.protocol) {
                     const alpnProtocols = [ 'http/1.1', 'http/1.0' ];
                     if ('2' === context.http.protocol_version) {
@@ -362,11 +359,12 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
 
                         stream.on('response', headers => resolve([ stream, headers ]));
                         stream.on('error', reject);
-                        if (context.http.content) {
-                            stream.write(context.http.content);
-                        }
 
-                        stream.end();
+                        if (context.http.content) {
+                            context.http.content.pipe(stream);
+                        } else {
+                            stream.end();
+                        }
                     });
 
                     this._message = http2Stream;
@@ -375,19 +373,23 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
                     this._message = await new Promise((resolve, reject) => {
                         const req = http1Request({
                             createConnection: () => stream,
-                            url,
+                            path: url.pathname,
                             method: context.http.method,
                             headers,
                             timeout: context.http.timeout * 1000,
                             signal: this._abortController ? this._abortController.signal : undefined,
-                        }, resolve);
+                        }, message => {
+                            req.removeListener('error', reject);
+                            resolve(message);
+                        });
 
-                        req.on('error', reject);
                         if (context.http.content) {
-                            req.write(context.http.content);
+                            context.http.content.pipe(req);
+                        } else {
+                            req.end();
                         }
 
-                        req.end();
+                        req.on('error', reject);
                     });
 
                     this._addHttp1ResponseHeaders();
@@ -407,7 +409,7 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
             }
         } catch (e) {
             await this.close();
-            return;
+            throw e;
         } finally {
             this._info.pretransfer_time = this._info.total_time = performance.now() - this._info.start_time;
         }
@@ -419,6 +421,8 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
         } else {
             this._remaining = -1;
         }
+
+        this._info.size_download = this._remaining;
 
         if ('HEAD' === context.http.method || [ 204, 304 ].includes(this._info.http_code)) {
             return;
@@ -443,11 +447,11 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
             info.response_headers[key] = isArray(value) ? value : [ value ];
         }
 
-        info.status_code = message.statusCode;
+        info.http_code = message.statusCode;
         info.debug += __jymfony.sprintf('< HTTP/%s %u %s \r\n', message.httpVersion, message.statusCode, message.statusText);
         info.debug += '< \r\n';
 
-        if (! info.status_code) {
+        if (! info.http_code) {
             throw new TransportException(__jymfony.sprintf('Invalid or missing HTTP status line for "%s".', info.url));
         }
     }
@@ -470,11 +474,11 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
             info.response_headers[key] = isArray(value) ? value : [ value ];
         }
 
-        info.status_code = headers[HTTP2_CONSTANTS.HTTP2_HEADER_STATUS];
-        info.debug += __jymfony.sprintf('< HTTP/2 %u\r\n', info.status_code);
+        info.http_code = headers[HTTP2_CONSTANTS.HTTP2_HEADER_STATUS];
+        info.debug += __jymfony.sprintf('< HTTP/2 %u\r\n', info.http_code);
         info.debug += '< \r\n';
 
-        if (! info.status_code) {
+        if (! info.http_code) {
             throw new TransportException(__jymfony.sprintf('Invalid or missing HTTP status code for "%s".', info.url));
         }
     }

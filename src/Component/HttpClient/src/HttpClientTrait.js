@@ -95,7 +95,7 @@ const normalizeHeaders = headers => {
                 throw new InvalidArgumentException(__jymfony.sprintf('Invalid value for header "%s": expected string, "%s" given.', name, __jymfony.get_debug_type(values)));
             }
 
-            values = isArray(values) ? [ values ] : [];
+            values = isArray(values) ? values : [ values ];
         }
 
         const lcName = name.toLowerCase();
@@ -125,8 +125,10 @@ const mergeDefaultOptions = (options, defaultOptions, allowExtraOptions = false)
         Object.assign(options.normalized_headers, normalizeHeaders(defaultOptions.headers));
     }
 
-    options.headers = options.headers || [];
-    options.headers.push(...Object.values(options.normalized_headers));
+    options.headers = [];
+    for (const values of Object.values(options.normalized_headers)) {
+        options.headers.push(...values);
+    }
 
     let resolve = options.resolve;
     if (resolve) {
@@ -140,7 +142,7 @@ const mergeDefaultOptions = (options, defaultOptions, allowExtraOptions = false)
     options.query = options.query || {};
 
     for (const [ k, v ] of __jymfony.getEntries(defaultOptions)) {
-        if ('normalized_headers' !== k && ! empty(options[k])) {
+        if ('normalized_headers' !== k && 'headers' !== k && empty(options[k])) {
             options[k] = v;
         }
     }
@@ -183,7 +185,7 @@ const mergeDefaultOptions = (options, defaultOptions, allowExtraOptions = false)
         const alternatives = [];
 
         for (const key of Object.keys(defaultOptions)) {
-            if (__jymfony.levenshtein(name, key) <= name.length / 3 || key.contains(name)) {
+            if (__jymfony.levenshtein(name, key) <= name.length / 3 || key.includes(name)) {
                 alternatives.push(key);
             }
         }
@@ -195,13 +197,17 @@ const mergeDefaultOptions = (options, defaultOptions, allowExtraOptions = false)
 };
 
 /**
- * @param {Object.<string, string>|string|NodeJS.ReadableStream|Buffer} body
+ * @param {Object.<string, string>|string|NodeJS.ReadableStream|Buffer|Function} body
  *
  * @returns {NodeJS.ReadableStream}
  *
  * @throws InvalidArgumentException When an invalid body is passed
  */
 const normalizeBody = body => {
+    if (isFunction(body)) {
+        body = body();
+    }
+
     if (isObjectLiteral(body)) {
         body = qsStringify(body);
     }
@@ -281,7 +287,7 @@ class HttpClientTrait {
                 const hdr = 'Content-Type: application/json';
 
                 options.headers.push(hdr);
-                options.normalized_headers['content-type'] = hdr;
+                options.normalized_headers['content-type'] = [ hdr ];
             }
         }
 
@@ -289,11 +295,23 @@ class HttpClientTrait {
             const hdr = 'Accept: */*';
 
             options.headers.push(hdr);
-            options.normalized_headers.accept = hdr;
+            options.normalized_headers.accept = [ hdr ];
         }
 
         if (options.body) {
             options.body = normalizeBody(options.body);
+
+            if (! options.normalized_headers['content-length'] && options.body instanceof __jymfony.StreamBuffer) {
+                const hdr = 'Content-Length: ' + options.body.buffer.length;
+                options.headers.push(hdr);
+                options.normalized_headers['content-length'] = [ hdr ];
+            }
+
+            if (! options.normalized_headers['content-type']) {
+                const hdr = 'Content-Type: application/octet-stream';
+                options.headers.push(hdr);
+                options.normalized_headers['content-type'] = [ hdr ];
+            }
         }
 
         // Validate on_progress
@@ -465,7 +483,7 @@ class HttpClientTrait {
                 (url.path || '') +
                 mergeQueryString(url.query || '', queryDefaults, false) +
                 (url.fragment || ''),
-            baseUrl
+            baseUrl || undefined
         );
     }
 

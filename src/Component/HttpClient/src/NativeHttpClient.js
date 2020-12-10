@@ -296,7 +296,7 @@ export default class NativeHttpClient extends implementationOf(
                     lastProgress = progress || lastProgress;
                 }
 
-                onProgress(lastProgress[0], lastProgress[1], progressInfo);
+                options.on_progress(lastProgress[0], lastProgress[1], progressInfo);
             };
         } else if (0 < options.max_duration) {
             const maxDuration = options.max_duration;
