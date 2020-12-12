@@ -1,4 +1,4 @@
-import {expect} from 'chai';
+import { expect } from 'chai';
 
 const HttpClientTestCase = Jymfony.Contracts.HttpClient.Test.HttpClientTestCase;
 const NativeHttpClient = Jymfony.Component.HttpClient.NativeHttpClient;
@@ -6,6 +6,10 @@ const NativeHttpClient = Jymfony.Component.HttpClient.NativeHttpClient;
 export default class NativeHttpClientTest extends HttpClientTestCase {
     getHttpClient() {
         return new NativeHttpClient();
+    }
+
+    get testCaseName() {
+        return '[HttpClient] ' + super.testCaseName;
     }
 
     async testHttpVersion() {
