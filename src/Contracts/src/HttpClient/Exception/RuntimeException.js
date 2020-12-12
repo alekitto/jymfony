@@ -1,8 +1,9 @@
+const ExceptionInterface = Jymfony.Contracts.HttpClient.Exception.ExceptionInterface;
+
 /**
  * @memberOf Jymfony.Contracts.HttpClient.Exception
- * @internal
  */
-class HttpExceptionTrait {
+export default class RuntimeException extends mix(global.RuntimeException, ExceptionInterface) {
     /**
      * Constructor.
      *
@@ -63,5 +64,3 @@ class HttpExceptionTrait {
         return this._response;
     }
 }
-
-export default getTrait(HttpExceptionTrait);

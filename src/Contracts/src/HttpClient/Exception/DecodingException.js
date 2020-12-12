@@ -1,7 +1,7 @@
-const ExceptionInterface = Jymfony.Contracts.HttpClient.Exception.ExceptionInterface;
+const RuntimeException = Jymfony.Contracts.HttpClient.Exception.RuntimeException;
 
 /**
  * @memberOf Jymfony.Contracts.HttpClient.Exception
  */
-export default class DecodingException extends mix(global.RuntimeException, ExceptionInterface) {
+export default class DecodingException extends RuntimeException {
 }

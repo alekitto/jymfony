@@ -20,7 +20,11 @@ class CommonResponseTrait {
     /**
      * @inheritdoc
      */
-    getStatusCode() {
+    async getStatusCode() {
+        if (this._initializer) {
+            await this._initialize();
+        }
+
         return this.getInfo('http_code');
     }
 
@@ -33,13 +37,17 @@ class CommonResponseTrait {
         }
 
         const headers = await this.getHeaders(Throw);
-        const contentType = headers['content-type'];
+        const contentType = headers['content-type'] ? headers['content-type'][0] : '';
 
-        if (contentType.match(/(?:text|application)\/(?:.+\+)json/)) {
+        if (String(contentType).match(/^(?:text|application)\/(?:.+\+)?json$/)) {
             /**
              * @type {Buffer}
              */
             const content = await this.getContent(false);
+            if (undefined === content) {
+                throw new TransportException('Cannot be decoded: buffering is disabled.');
+            }
+
             if (0 === content.length) {
                 throw new DecodingException('Response body is empty.');
             }
@@ -51,7 +59,7 @@ class CommonResponseTrait {
             }
         }
 
-        if (null !== this._decodedData) {
+        if (null === this._decodedData) {
             throw new DecodingException(__jymfony.sprintf('Cannot decode content of type %s', contentType));
         }
 

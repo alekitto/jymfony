@@ -1,10 +1,10 @@
 import { constants as HTTP2_CONSTANTS, connect as http2Connect } from 'http2';
+import { checkServerIdentity, connect as tlsConnect } from 'tls';
 import { Socket } from 'net';
 import { promises as fsPromises } from 'fs';
 import { request as http1Request } from 'http';
 import { performance } from 'perf_hooks';
 import { pipeline } from 'stream';
-import { connect as tlsConnect, checkServerIdentity } from 'tls';
 
 const CommonResponseTrait = Jymfony.Component.HttpClient.CommonResponseTrait;
 const DecodingStream = Jymfony.Component.HttpClient.DecodingStream;
@@ -126,6 +126,13 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
          * @private
          */
         this._initializer = () => true;
+
+        /**
+         * @type {number | null}
+         *
+         * @private
+         */
+        this._timeout = null;
     }
 
     /**
@@ -173,21 +180,6 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
     /**
      * @inheritdoc
      */
-    async getStream(Throw = true) {
-        if (this._initializer) {
-            await this._initialize();
-        }
-
-        if (Throw) {
-            this._checkStatusCode();
-        }
-
-        return this._readable;
-    }
-
-    /**
-     * @inheritdoc
-     */
     async getContent(Throw = true) {
         if (this._initializer) {
             await this._initialize();
@@ -195,6 +187,10 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
 
         if (Throw) {
             this._checkStatusCode();
+        }
+
+        if (null === this._message) {
+            throw new TransportException('Request has been canceled');
         }
 
         if (true === this._options.buffer) {
@@ -212,7 +208,15 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
             return this._message;
         }
 
-        return this._pipeline(this._readable, this._options.buffer);
+        if (null === this._readable) {
+            throw new TransportException('Cannot get the content of the response twice: buffering is disabled.');
+        }
+
+        try {
+            return this._pipeline(this._readable, this._options.buffer);
+        } finally {
+            this._readable = null;
+        }
     }
 
     close() {
@@ -220,19 +224,35 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
             this._abortController.abort();
         }
 
-        this._message = this._onProgress = null;
+        this._message = this._readable = this._onProgress = null;
     }
 
-    _pipeline(input, output) {
-        return new Promise((resolve, reject) => {
-            pipeline(input, output, err => {
-                if (err) {
-                    reject(err);
+    async _pipeline(input, output) {
+        let rejectionFn, resolved = false;
+        await new Promise((resolve, reject) => {
+            rejectionFn = err => {
+                if (resolved) {
+                    return;
                 }
 
-                resolve();
+                resolved = true;
+                reject(err);
+            };
+
+            input.on('error', rejectionFn);
+            output.on('error', rejectionFn);
+
+            pipeline(input, output, err => {
+                if (err) {
+                    rejectionFn(err);
+                } else {
+                    resolve();
+                }
             });
         });
+
+        input.removeListener('error', rejectionFn);
+        output.removeListener('error', rejectionFn);
     }
 
     async _perform() {
@@ -243,14 +263,25 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
 
         const contentEncoding = this._headers['content-encoding'] ? this._headers['content-encoding'][0] : undefined;
         const decodingStream = new DecodingStream(contentEncoding || DecodingStream.ENCODING_NONE, {
-            onProgress: this._onProgress ? (current => {
+            onProgress: current => {
                 this._remaining = 0 < this._info.size_download ? this._info.size_download - current : this._remaining;
-                this._onProgress(current, this._info.size_download, this._info);
-            }) : undefined,
+                if (0 === this._remaining) {
+                    this._timeout.unref();
+                    clearTimeout(this._timeout);
+                }
+
+                if (this._onProgress) {
+                    this._onProgress(current, this._info.size_download, this._info);
+                }
+            },
         });
 
         this._info.total_time = this._info.starttransfer_time = performance.now() - this._info.start_time;
         this._readable = this._message.pipe(decodingStream);
+        this._readable.on('end', () => {
+            this._timeout.unref();
+            clearTimeout(this._timeout);
+        });
     }
 
     async _open() {
@@ -340,14 +371,14 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
                                 if (this._options.verify_host) {
                                     checkServerIdentity(host, peerCertificate);
                                 }
-                            }
+                            },
                         }, () => resolve(tlsSocket));
 
                         tlsSocket.on('tlsClientError', reject);
                         tlsSocket.on('error', reject);
                     });
 
-                    this._info.capture_peer_cert_chain = this._options.capture_peer_cert_chain ? stream.getPeerCertificate(true) : null;
+                    this._info.peer_certificate_chain = this._options.capture_peer_cert_chain ? stream.getPeerCertificate(true) : null;
                     if ('h2' === stream.alpnProtocol) {
                         context.http.protocol_version = '2';
                     } else {
@@ -370,9 +401,8 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
                 if ('2' === context.http.protocol_version) {
                     const client = http2Connect(url, {
                         createConnection: () => stream,
+                        timeout: context.http.timeout * 1000,
                     });
-
-                    client.setTimeout(context.http.timeout * 1000);
 
                     const [ http2Stream, responseHeaders ] = await new Promise((resolve, reject) => {
                         const h2Headers = Object.keys(headers)
@@ -393,8 +423,11 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
                             ...h2Headers,
                         });
 
-                        stream.on('response', headers => resolve([ stream, headers ]));
-                        stream.on('timeout', reject);
+                        stream.on('response', headers => {
+                            stream.removeListener('error', reject);
+                            resolve([ stream, headers ]);
+                        });
+
                         stream.on('error', reject);
 
                         if (context.http.content) {
@@ -413,8 +446,8 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
                             path: url.pathname,
                             method: context.http.method,
                             headers,
-                            timeout: context.http.timeout * 1000,
                             signal: this._abortController ? this._abortController.signal : undefined,
+                            timeout: context.http.timeout * 1000,
                         }, message => {
                             req.removeListener('error', reject);
                             resolve(message);
@@ -426,7 +459,6 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
                             req.end();
                         }
 
-                        req.on('timeout', reject);
                         req.on('error', reject);
                     });
 
@@ -435,6 +467,14 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
 
                 const location = this._headers.location ? this._headers.location[0] : null;
                 url = await resolver(location, context);
+
+                const timeoutFn = () => {
+                    const message = this._readable || this._message;
+                    message.emit('error', new TransportException('Request timed out'));
+                };
+
+                this._message.on('timeout', timeoutFn);
+                this._timeout = setTimeout(timeoutFn, context.http.timeout * 1000);
 
                 socket.end();
 
@@ -453,7 +493,11 @@ export default class NativeHttpResponse extends implementationOf(ResponseInterfa
         }
 
         if (isFunction(this._options.buffer)) {
-            this._options.buffer = this._options.buffer(this._headers);
+            try {
+                this._options.buffer = this._options.buffer(this._headers);
+            } catch (e) {
+                throw new TransportException(e.message, 0, e);
+            }
         }
 
         this._context = this._resolver = null;

@@ -31,13 +31,13 @@
   "config": {
     "jymfony-autoload": {
       "namespaces": {
-        "Jymfony.Component.Lexer": "src/"
+        "Jymfony.Component.HttpClient": "src/"
       }
     },
     "jymfony-autoload-dev": {
       "namespaces": {
-        "Jymfony.Component.Lexer.Fixtures": "fixtures/",
-        "Jymfony.Component.Lexer.Tests": "test/"
+        "Jymfony.Component.HttpClient.Fixtures": "fixtures/",
+        "Jymfony.Component.HttpClient.Tests": "test/"
       }
     }
   }

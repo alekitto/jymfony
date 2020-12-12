@@ -142,7 +142,14 @@ const mergeDefaultOptions = (options, defaultOptions, allowExtraOptions = false)
     options.query = options.query || {};
 
     for (const [ k, v ] of __jymfony.getEntries(defaultOptions)) {
-        if ('normalized_headers' !== k && 'headers' !== k && empty(options[k])) {
+        if ('normalized_headers' === k || 'headers' === k) {
+            continue;
+        }
+
+        if (
+            ('user_data' === k && undefined === options[k]) ||
+            ('user_data' !== k && empty(options[k]))
+        ) {
             options[k] = v;
         }
     }
@@ -439,7 +446,7 @@ class HttpClientTrait {
             port = allowedSchemes[scheme] === port ? 0 : port;
         }
 
-        let host = parsedUrl.host;
+        let host = parsedUrl.hostname;
         if (host) {
             host += port ? ':' + port : '';
         }

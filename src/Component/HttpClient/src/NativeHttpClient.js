@@ -28,7 +28,7 @@ const parseHostPort = (url, info) => {
         info.primary_port = 'http:' === url.protocol ? 80 : 443;
     }
 
-    return [ (new URL(url.origin)).host, port ];
+    return [ (new URL(url.origin)).hostname, port ];
 };
 
 /**
@@ -273,6 +273,7 @@ export default class NativeHttpClient extends implementationOf(
             primary_ip: '',
             primary_port: 'http:' === url.protocol ? 80 : 443,
             debug: '',
+            user_data: options.user_data,
         };
 
         let onProgress = options.on_progress;

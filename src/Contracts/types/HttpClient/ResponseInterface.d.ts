@@ -87,6 +87,9 @@ declare namespace Jymfony.Contracts.HttpClient {
          * @return An object of all available info, or one of them when type is
          *           provided, or null when an unsupported type is requested
          */
-        getInfo(type?: null | keyof HttpClientInfo): HttpClientInfo;
+        getInfo(): HttpClientInfo;
+        getInfo(type: null): HttpClientInfo;
+        getInfo<T extends keyof HttpClientInfo>(type: T): HttpClientInfo[T];
+        getInfo(type: any): any;
     }
 }

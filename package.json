@@ -112,6 +112,7 @@
         "Jymfony.Component.Dotenv.Tests": "src/Component/Dotenv/test",
         "Jymfony.Component.EventDispatcher.Tests": "src/Component/EventDispatcher/test",
         "Jymfony.Component.Filesystem.Tests": "src/Component/Filesystem/test",
+        "Jymfony.Component.HttpClient.Tests": "src/Component/HttpClient/test",
         "Jymfony.Component.HttpFoundation.Tests": "src/Component/HttpFoundation/test",
         "Jymfony.Component.HttpServer.Tests": "src/Component/HttpServer/test",
         "Jymfony.Component.HttpServer.Tests.Fixtures": "src/Component/HttpServer/fixtures",

@@ -19,6 +19,8 @@
   "devDependencies": {
     "@jymfony/autoloader": "https://github.com/jymfony/autoloader.git",
     "@jymfony/debug": "https://github.com/jymfony/debug.git",
+    "@jymfony/http-server": "https://github.com/jymfony/http-server.git",
+    "@jymfony/logger": "https://github.com/jymfony/logger.git",
     "@jymfony/testing": "https://github.com/jymfony/testing.git",
     "@jymfony/util": "https://github.com/jymfony/util.git",
     "@types/node": "*",

@@ -44,6 +44,11 @@ Jymfony.Contracts = {
          * @namespace
          */
         Exception: {},
+
+        /**
+         * @namespace
+         */
+        Test: {},
     },
 
     /**

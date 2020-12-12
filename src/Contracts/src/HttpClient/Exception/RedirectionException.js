@@ -1,5 +1,4 @@
-const ExceptionInterface = Jymfony.Contracts.HttpClient.Exception.ExceptionInterface;
-const HttpExceptionTrait = Jymfony.Contracts.HttpClient.Exception.HttpExceptionTrait;
+const RuntimeException = Jymfony.Contracts.HttpClient.Exception.RuntimeException;
 
 /**
  * Represents a 3xx response.
@@ -7,5 +6,5 @@ const HttpExceptionTrait = Jymfony.Contracts.HttpClient.Exception.HttpExceptionT
  * @memberOf Jymfony.Contracts.HttpClient.Exception
  * @final
  */
-export default class RedirectionException extends mix(global.RuntimeException, ExceptionInterface, HttpExceptionTrait) {
+export default class RedirectionException extends RuntimeException {
 }

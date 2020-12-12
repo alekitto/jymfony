@@ -1,4 +1,6 @@
 declare namespace Jymfony.Contracts.HttpClient.Exception {
-    export class ServerException extends mix(global.RuntimeException, ExceptionInterface, HttpExceptionTrait) {
+    import RuntimeException = Jymfony.Contracts.HttpClient.Exception.RuntimeException;
+
+    export class ServerException extends RuntimeException {
     }
 }
