@@ -19,6 +19,10 @@ export default class HttpClientTestCase extends TestCase {
         await __self.server;
     }
 
+    get defaultTimeout() {
+        return 20000;
+    }
+
     /**
      * @returns {Jymfony.Contracts.HttpClient.HttpClientInterface}
      * @abstract
@@ -26,8 +30,6 @@ export default class HttpClientTestCase extends TestCase {
     getHttpClient() { }
 
     async testGetRequest() {
-        this.setTimeout(10000);
-
         const client = this.getHttpClient();
         const data = {}, response = client.request('GET', 'http://localhost:8057', {
             headers: { Foo: 'baR' },
