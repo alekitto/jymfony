@@ -1,7 +1,9 @@
+/* eslint-disable no-unused-expressions */
 import { expect } from 'chai';
 
 const TestCase = Jymfony.Component.Testing.Framework.TestCase;
 const TestHttpServer = Jymfony.Contracts.HttpClient.Test.TestHttpServer;
+const ClientException = Jymfony.Contracts.HttpClient.Exception.ClientException;
 const TransportException = Jymfony.Contracts.HttpClient.Exception.TransportException;
 
 /**
@@ -206,5 +208,34 @@ export default class HttpClientTestCase extends TestCase {
 
         this.expectException(TransportException);
         await response.getContent();
+    }
+
+    async testClientError() {
+        const client = this.getHttpClient();
+        const response = client.request('GET', 'http://localhost:8057/404');
+
+        expect(await response.getStatusCode()).to.be.equal(404);
+
+        try {
+            await response.getHeaders();
+            this.fail(ReflectionClass.getClassName(ClientException) + ' expected');
+        } catch (e) {
+            if (! (e instanceof ClientException)) {
+                throw e;
+            }
+        }
+
+        try {
+            await response.getContent();
+            this.fail(ReflectionClass.getClassName(ClientException) + ' expected');
+        } catch (e) {
+            if (! (e instanceof ClientException)) {
+                throw e;
+            }
+        }
+
+        expect(await response.getStatusCode()).to.be.equal(404);
+        expect((await response.getHeaders(false))['content-type']).to.be.deep.equal(['application/json']);
+        expect(await response.getContent(false)).not.to.be.empty;
     }
 }
